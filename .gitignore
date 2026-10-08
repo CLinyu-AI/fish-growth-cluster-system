@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+env/
+.env
+
+# 数据输出、数据库
+*.db
+*.sqlite
+*.log
+result_exports/
+saved_models/
+
+# 上传的数据集
+data_uploads/
+ultidataset/
+
+# IDE
+.idea/
+.vscode/

@@ -1,0 +1,150 @@
+{% extends "admin/base.html" %}
+
+{% block title %}数据集编辑{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2>数据集编辑：{{ dataset.name }}</h2>
+        <a href="{{ url_for('admin.data_manage') }}" class="btn btn-primary">返回数据集列表</a>
+    </div>
+    <div class="alert alert-info">
+        提示：双击单元格可编辑内容，点击行尾的删除按钮可删除整行，修改完成后点击「保存修改」按钮提交。
+        <br>⚠️ 禁止修改列名，否则会导致模型训练失败！
+    </div>
+    <div style="margin-bottom: 20px;">
+        <button id="saveBtn" class="btn btn-success">保存修改</button>
+        <button id="addRowBtn" class="btn btn-primary" style="margin-left: 10px;">新增一行</button>
+    </div>
+    <div style="overflow-x: auto; max-height: 70vh;">
+        <table id="dataTable" class="edit-table">
+            <thead>
+                <tr>
+                    {% for col in df.columns %}
+                    <th>{{ col }}</th>
+                    {% endfor %}
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for _, row in df.iterrows() %}
+                <tr>
+                    {% for col in df.columns %}
+                    <td data-column="{{ col }}">{{ row[col] }}</td>
+                    {% endfor %}
+                    <td>
+                        <button class="btn btn-danger delete-row-btn" style="padding: 5px 10px; font-size: 12px;">删除</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.edit-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.edit-table th, .edit-table td {
+    border: 1px solid #ddd;
+    padding: 8px 12px;
+    min-width: 120px;
+}
+.edit-table th {
+    background-color: #f8f9fa;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+.edit-table td[contenteditable="true"] {
+    background-color: #fffbeb;
+}
+.edit-table tr:hover {
+    background-color: #f9f9f9;
+}
+</style>
+
+<script>
+const table = document.getElementById('dataTable');
+const saveBtn = document.getElementById('saveBtn');
+const addRowBtn = document.getElementById('addRowBtn');
+const columns = Array.from(table.querySelectorAll('thead th')).slice(0, -1).map(th => th.textContent);
+
+// 双击单元格开启编辑
+table.addEventListener('dblclick', function(e) {
+    const td = e.target.closest('td');
+    if (td && td.getAttribute('data-column')) {
+        td.contentEditable = true;
+        td.focus();
+    }
+});
+
+// 失去焦点关闭编辑
+table.addEventListener('blur', function(e) {
+    const td = e.target.closest('td');
+    if (td && td.contentEditable === 'true') {
+        td.contentEditable = false;
+    }
+}, true);
+
+// 删除行
+table.addEventListener('click', function(e) {
+    if (e.target.classList.contains('delete-row-btn')) {
+        if (confirm('确定删除这一行数据吗？')) {
+            e.target.closest('tr').remove();
+        }
+    }
+});
+
+// 新增行
+addRowBtn.addEventListener('click', function() {
+    const tbody = table.querySelector('tbody');
+    const newRow = document.createElement('tr');
+    let html = '';
+    columns.forEach(col => {
+        html += `<td data-column="${col}"></td>`;
+    });
+    html += `<td><button class="btn btn-danger delete-row-btn" style="padding: 5px 10px; font-size: 12px;">删除</button></td>`;
+    newRow.innerHTML = html;
+    tbody.appendChild(newRow);
+});
+
+// 保存修改
+saveBtn.addEventListener('click', async function() {
+    if (!confirm('确定保存所有修改吗？此操作不可恢复！')) {
+        return;
+    }
+    // 收集表格数据
+    const rows = Array.from(table.querySelectorAll('tbody tr'));
+    const data = rows.map(row => {
+        const rowData = {};
+        columns.forEach(col => {
+            const td = row.querySelector(`td[data-column="${col}"]`);
+            rowData[col] = td.textContent.trim();
+        });
+        return rowData;
+    });
+    // 提交到后端
+    try {
+        const res = await fetch("{{ url_for('admin.save_data_edit', dataset_id=dataset.dataset_id) }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if (result.success) {
+            alert(result.msg);
+            window.location.reload();
+        } else {
+            alert('保存失败：' + result.msg);
+        }
+    } catch (e) {
+        alert('请求失败，请重试');
+    }
+});
+</script>
+{% endblock %}

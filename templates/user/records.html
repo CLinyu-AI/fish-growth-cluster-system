@@ -1,0 +1,51 @@
+{% extends "user/base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card">
+        <div class="card-header">
+            <h2 class="m-0">我的预测记录</h2>
+        </div>
+        <div class="card-body">
+            {% if records %}
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                    <thead class="thead-light">
+                        <tr>
+                            <th width="15%">预测时间</th>
+                            <th width="12%">使用模型</th>
+                            <th width="10%">长度(cm)</th>
+                            <th width="10%">重量(g)</th>
+                            <th width="10%">重长比</th>
+                            <th width="13%">聚类标签</th>
+                            <th width="15%">预测鱼类</th>
+                            <th width="15%">置信度</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in records %}
+                        <tr>
+                            <td>{{ record.create_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>{{ record.model_name.upper() }}({{ record.model_id }})</td>
+                            <td>{{ "%.2f"|format(record.input_length) }}</td>
+                            <td>{{ "%.2f"|format(record.input_weight) }}</td>
+                            <td>{{ "%.4f"|format(record.input_l_w_ratio) }}</td>
+                            <td>类别{{ record.predicted_label }}</td>
+                            <td>{{ record.predicted_species }}</td>
+                            <td>{% if record.confidence %}{{ "%.2f%%"|format(record.confidence) }}{% else %}无{% endif %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                <p class="text-muted">暂无预测记录，快去进行第一次预测吧！</p>
+                <a href="{{ url_for('user.predict') }}" class="btn btn-primary mt-2">去预测</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

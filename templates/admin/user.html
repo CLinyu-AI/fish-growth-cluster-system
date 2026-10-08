@@ -1,0 +1,95 @@
+{% extends "admin/base.html" %}
+
+{% block title %}用户管理{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>添加新用户</h2>
+    {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+    <form method="post" style="display: flex; gap: 20px; align-items: end;">
+        <div class="form-group" style="flex: 1;">
+            <label>用户名</label>
+            <input type="text" name="username" required placeholder="管理员：admin+数字 | 用户：纯数字">
+        </div>
+        <div class="form-group" style="flex: 1;">
+            <label>密码</label>
+            <input type="password" name="password" required placeholder="至少6位">
+        </div>
+        <div class="form-group" style="flex: 1;">
+            <label>用户角色</label>
+            <select name="role_id" id="roleSelect" required>
+                {% for role in roles %}
+                <option value="{{ role.role_id }}">{{ role.role_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="flex: 1;" id="inviteCodeGroup" style="display: none;">
+            <label>管理员邀请码</label>
+            <input type="password" name="invite_code" placeholder="请输入管理员邀请码">
+        </div>
+        <button type="submit" class="btn btn-primary">添加用户</button>
+    </form>
+</div>
+
+<div class="card">
+    <h2>用户列表</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>用户ID</th>
+                <th>用户名</th>
+                <th>角色</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.user_id }}</td>
+                <td>{{ user.username }}</td>
+                <td>{{ user.role_name }}</td>
+                <td>
+                    <form method="post" action="{{ url_for('admin.update_user_role_route', user_id=user.user_id) }}" style="display: inline-block;">
+                        <select name="new_role_id" style="width: auto; padding: 8px;">
+                            {% for role in roles %}
+                            <option value="{{ role.role_id }}" {% if role.role_name == user.role_name %}selected{% endif %}>
+                                {{ role.role_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-warning">修改角色</button>
+                    </form>
+                    <a href="{{ url_for('admin.delete_user_route', user_id=user.user_id) }}" class="btn btn-danger" onclick="return confirm('确定删除该用户吗？')">删除</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="4" style="text-align: center; color: #999;">暂无用户</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<script>
+// 控制邀请码输入框显示
+const roleSelect = document.getElementById('roleSelect');
+const inviteCodeGroup = document.getElementById('inviteCodeGroup');
+
+function toggleInviteCode() {
+    const selectedRole = roleSelect.options[roleSelect.selectedIndex].text;
+    if (selectedRole === 'admin') {
+        inviteCodeGroup.style.display = 'block';
+        inviteCodeGroup.querySelector('input').required = true;
+    } else {
+        inviteCodeGroup.style.display = 'none';
+        inviteCodeGroup.querySelector('input').required = false;
+    }
+}
+
+// 初始化
+toggleInviteCode();
+roleSelect.addEventListener('change', toggleInviteCode);
+</script>
+{% endblock %}

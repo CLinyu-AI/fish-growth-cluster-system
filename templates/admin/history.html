@@ -1,0 +1,37 @@
+{% extends "admin/base.html" %}
+
+{% block title %}训练历史{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>训练任务历史</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>任务ID</th>
+                <th>所属数据集</th>
+                <th>算法名称</th>
+                <th>任务状态</th>
+                <th>创建时间</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for task, dataset in tasks %}
+            <tr>
+                <td>{{ task.task_id }}</td>
+                <td>{{ dataset.name }}</td>
+                <td>{{ task.algorithm.upper() }}</td>
+                <td class="task-status task-{{ task.status }}">
+                    {{ '已完成' if task.status == 'completed' else '失败' if task.status == 'failed' else '运行中' }}
+                </td>
+                <td>{{ task.create_time }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" class="table-empty-tip">暂无训练历史</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

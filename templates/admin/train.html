@@ -1,0 +1,59 @@
+{% extends "admin/base.html" %}
+
+{% block title %}模型训练{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>模型训练</h2>
+    {% if success %}
+    <div class="alert alert-success">{{ success }}</div>
+    {% endif %}
+    {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+    <form method="post" action="{{ url_for('admin.run_train_task') }}" style="max-width: 1000px; margin: 0 auto;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 30px; margin-bottom: 30px;">
+            <div class="form-group">
+                <label>选择数据集</label>
+                <select name="dataset_id" required>
+                    <option value="">请选择数据集</option>
+                    {% for dataset in datasets %}
+                    <option value="{{ dataset.dataset_id }}">{{ dataset.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>选择聚类算法</label>
+                <select name="algorithm_name" required>
+                    <option value="">请选择聚类算法</option>
+                    <option value="kmeans">KMEANS++</option>
+                    <option value="bgmm">BGMM</option>
+                    <option value="fcm">FCM（模糊C均值）</option>
+                    <option value="meanshift">MeanShift（均值漂移）</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>聚类数量（自动匹配真实类别数）</label>
+                <input type="number" name="n_clusters" min="2" placeholder="自动读取数据集真实类别数，无需手动修改">
+            </div>
+        </div>
+
+        {% if error %}
+        <div class="alert alert-danger" style="margin-bottom: 20px;">训练失败：{{ error }}</div>
+        {% endif %}
+
+        <button type="submit" class="btn btn-success" style="padding: 12px 40px; font-size: 16px;">开始训练</button>
+    </form>
+</div>
+
+<script>
+// 选择数据集后，自动填充真实聚类数
+document.getElementById('datasetSelect').addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    const clusterCount = selectedOption.getAttribute('data-cluster-count');
+    if (clusterCount) {
+        document.getElementById('clusterCount').value = clusterCount;
+    }
+});
+</script>
+{% endblock %}

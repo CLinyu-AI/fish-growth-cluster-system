@@ -1,0 +1,62 @@
+{% extends "admin/base.html" %}
+
+{% block title %}数据管理{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>上传数据集</h2>
+    {% if success %}
+    <div class="alert alert-success">{{ success }}</div>
+    {% endif %}
+    {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+    <form method="post" enctype="multipart/form-data">
+        <div style="display: flex; gap: 20px; align-items: end;">
+            <div class="form-group" style="flex: 1;">
+                <label>数据集名称</label>
+                <input type="text" name="dataset_name" required placeholder="请输入数据集名称">
+            </div>
+            <div class="form-group" style="flex: 2;">
+                <label>选择CSV文件</label>
+                <input type="file" name="dataset_file" accept=".csv" required>
+            </div>
+            <button type="submit" class="btn btn-primary">上传数据集</button>
+        </div>
+        <p style="color: #666; margin-top: 10px;">* CSV文件必须包含列：length（长度）、weight（重量）、w_l_ratio（重长比）、species（真实类别）</p>
+    </form>
+</div>
+
+<div class="card">
+    <h2>数据集列表</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>数据集ID</th>
+                <th>数据集名称</th>
+                <th>文件路径</th>
+                <th>上传时间</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for dataset in datasets %}
+            <tr>
+                <td>{{ dataset.dataset_id }}</td>
+                <td>{{ dataset.name }}</td>
+                <td>{{ dataset.file_path }}</td>
+                <td>{{ dataset.upload_time }}</td>
+                <td>
+                    <a href="{{ url_for('admin.data_detail', dataset_id=dataset.dataset_id) }}" class="btn btn-primary" style="margin-right: 5px;">查看/编辑</a>
+                    <a href="{{ url_for('admin.delete_dataset_route', dataset_id=dataset.dataset_id) }}" class="btn btn-danger" onclick="return confirm('确定删除该数据集吗？')">删除</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" class="table-empty-tip">暂无数据集，请先上传</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,0 +1,125 @@
+{% extends "user/base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card">
+        <div class="card-body">
+            <h2 class="mb-4">鱼类生长特征聚类预测</h2>
+            
+            <!-- 预测结果展示 -->
+            {% if result %}
+            <div class="alert alert-success mb-4" role="alert">
+                <h5 class="alert-heading">预测结果</h5>
+                <p class="mb-1">使用模型: {{ result.model_name }}</p>
+                <p class="mb-1">预测聚类类别: {{ result.predicted_label }}</p>
+                <p class="mb-1">预测鱼类类别: {{ result.predicted_species }}</p>
+                <p class="mb-0">置信度: {% if result.confidence %}{{ "%.2f%%"|format(result.confidence) }}{% else %}无{% endif %}</p>
+            </div>
+            {% endif %}
+            
+            {% if error %}
+            <div class="alert alert-danger mb-4" role="alert">
+                {{ error }}
+            </div>
+            {% endif %}
+            
+            <!-- 备注信息展示区域 -->
+            <div class="row mb-4" id="predictRemarkSection" style="display: none;">
+                <div class="col-md-12">
+                    <div class="text-muted">正在加载说明信息...</div>
+                </div>
+            </div>
+            
+            <!-- 使用说明卡片 -->
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="card shadow border-left-info">
+                        <div class="card-header bg-light">
+                            <h5 class="m-0 text-info">使用说明</h5>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled mb-0">
+                                <li class="mb-2"><i class="fas fa-info-circle text-info mr-2"></i> 选择合适的预测模型（准确率越高结果越可靠）</li>
+                                <li class="mb-2"><i class="fas fa-info-circle text-info mr-2"></i> 准确输入鱼类的长度(cm)、重量(g)和重长比参数</li>
+                                <li class="mb-2"><i class="fas fa-info-circle text-info mr-2"></i> 点击"开始预测"按钮即可获得预测结果</li>
+                                <li><i class="fas fa-info-circle text-info mr-2"></i> 预测结果包含聚类类别、鱼类类别和置信度信息</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 预测表单 -->
+            <form method="POST" class="mt-4">
+                <div class="form-group row justify-content-center mb-4">
+                    <label class="col-form-label col-md-3 text-right">选择预测模型</label>
+                    <div class="col-md-6">
+                        <select class="form-control" name="model_id" required>
+                            <option value="">请选择已部署的模型</option>
+                            {% for model in models %}
+                            <option value="{{ model.model_id }}">ID:{{ model.model_id }} - {{ model.model_name }} ({{ model.model_id }}) - 准确率: {{ "%.2f%%"|format(model.accuracy) }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group row justify-content-center mb-4">
+                    <div class="col-md-2">
+                        <label class="form-label">鱼类长度 (cm)</label>
+                        <input type="number" step="0.01" class="form-control" name="length" placeholder="请输入长度" required>
+                    </div>
+                    <div class="col-md-2 offset-md-1">
+                        <label class="form-label">鱼类重量 (g)</label>
+                        <input type="number" step="0.01" class="form-control" name="weight" placeholder="请输入重量" required>
+                    </div>
+                    <div class="col-md-2 offset-md-1">
+                        <label class="form-label">重长比</label>
+                        <input type="number" step="0.0001" class="form-control" name="w_l_ratio" placeholder="请输入重长比" required>
+                    </div>
+                </div>
+                
+                <div class="form-group row justify-content-center">
+                    <div class="col-md-6">
+                        <button type="submit" class="btn btn-primary btn-block btn-lg">开始预测</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function(){
+    loadPredictRemarks();
+});
+
+function loadPredictRemarks() {
+    $.get('/user/remark/list/predict/0', function(res){
+        if (res.success) {
+            let html = '';
+            if (res.data.length > 0) {
+                res.data.forEach(remark => {
+                    html += `
+                    <div class="col-md-12 mb-3">
+                        <div class="card border-left-info shadow">
+                            <div class="card-body">
+                                <div class="card-text">${remark.content}</div>
+                                <small class="text-muted">更新于: ${remark.update_time}</small>
+                            </div>
+                        </div>
+                    </div>
+                    `;
+                });
+            } else {
+                html = '<div class="col-md-12"><p class="text-muted">暂无说明信息</p></div>';
+            }
+            $('#predictRemarkSection').html(html);
+        }
+    }).fail(function(){
+        $('#predictRemarkSection').html('<div class="col-md-12"><p class="text-danger">说明信息加载失败</p></div>');
+    });
+}
+</script>
+{% endblock %}

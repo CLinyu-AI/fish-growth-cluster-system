@@ -1,0 +1,98 @@
+{% extends "admin/base.html" %}
+
+{% block title %}操作日志{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>操作日志</h2>
+    </div>
+    
+    <div class="card shadow border-0">
+        <div class="card-body p-0">
+            <table class="table table-hover table-striped mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th width="80">日志ID</th>
+                        <th width="120">操作人</th>
+                        <th>操作内容</th>
+                        <th width="180">操作时间</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log, username in logs %}
+                    <tr>
+                        <td>{{ log.log_id }}</td>
+                        <td>{{ username }}</td>
+                        <td>{{ log.operation }}</td>
+                        <td>{{ log.create_time.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center py-4 text-muted">暂无操作日志</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.table thead th {
+    border-bottom: none;
+    font-weight: 500;
+}
+
+.table td, .table th {
+    padding: 12px 16px;
+    vertical-align: middle;
+}
+
+.container-fluid {
+    max-width: 100%;
+}
+
+.d-flex {
+    display: flex;
+}
+
+.justify-content-between {
+    justify-content: space-between;
+}
+
+.align-items-center {
+    align-items: center;
+}
+
+.mb-4 {
+    margin-bottom: 1.5rem;
+}
+
+.p-0 {
+    padding: 0;
+}
+
+.mb-0 {
+    margin-bottom: 0;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.py-4 {
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+}
+
+.text-muted {
+    color: #6c757d;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>404 - 页面未找到</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <style>
+        .error-container {
+            max-width: 600px;
+            margin: 100px auto;
+            text-align: center;
+            padding: 50px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .error-container h1 {
+            font-size: 80px;
+            color: #e74c3c;
+            margin-bottom: 20px;
+        }
+        .error-container h2 {
+            font-size: 24px;
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <h1>404</h1>
+        <h2>抱歉，你访问的页面不存在！</h2>
+        <p>可能是网址输入错误，或该页面已被移除。</p>
+        <a href="{{ url_for('auth.login') }}" class="btn btn-primary">返回登录页</a>
+    </div>
+</body>
+</html>

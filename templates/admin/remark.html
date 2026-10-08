@@ -1,0 +1,349 @@
+{% extends "admin/base.html" %}
+
+{% block title %}信息管理{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>网站信息管理</h2>
+    <p>管理首页底部显示的公告信息</p>
+</div>
+
+<style>
+    .page-header {
+        margin-bottom: 30px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #eee;
+    }
+    .form-container {
+        background: white;
+        padding: 25px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 30px;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: #333;
+    }
+    .form-group textarea {
+        width: 100%;
+        min-height: 200px;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+        resize: vertical;
+    }
+    .form-group .checkbox-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: normal;
+    }
+    .btn-submit {
+        background-color: #3498db;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 15px;
+        transition: background 0.3s;
+    }
+    .btn-submit:hover {
+        background-color: #2980b9;
+    }
+    .remark-list {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .remark-item {
+        padding: 20px;
+        border-bottom: 1px solid #eee;
+    }
+    .remark-item:last-child {
+        border-bottom: none;
+    }
+    .remark-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    .remark-meta {
+        font-size: 13px;
+        color: #666;
+    }
+    .remark-content {
+        font-size: 14px;
+        line-height: 1.6;
+        color: #333;
+        margin-bottom: 15px;
+    }
+    .remark-content img {
+        max-width: 100%;
+        height: auto;
+        margin: 10px 0;
+        border-radius: 4px;
+    }
+    .remark-actions {
+        display: flex;
+        gap: 10px;
+    }
+    .btn-small {
+        padding: 5px 12px;
+        font-size: 13px;
+        border-radius: 3px;
+        border: none;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+    .btn-edit {
+        background-color: #f39c12;
+        color: white;
+    }
+    .btn-edit:hover {
+        background-color: #e67e22;
+    }
+    .btn-delete {
+        background-color: #e74c3c;
+        color: white;
+    }
+    .btn-delete:hover {
+        background-color: #c0392b;
+    }
+    .status-badge {
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    .status-active {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    .status-inactive {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    .alert {
+        padding: 12px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+    .alert-success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    .alert-error {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+</style>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<div class="form-container">
+    <h3>发布新公告</h3>
+    <form method="POST" action="{{ url_for('admin.remark_manage') }}" onsubmit="beforeAddSubmit()">
+        <div class="form-group">
+            <label for="remark_content">公告内容</label>
+            <div id="remark_content" style="border: 1px solid #ddd; border-radius: 4px;"></div>
+            <!-- 隐藏input用于提交表单 -->
+            <input type="hidden" id="remark_content_input" name="remark_content" required>
+        </div>
+        <div class="form-group">
+            <label class="checkbox-label">
+                <input type="checkbox" name="is_active" checked>
+                立即对用户可见
+            </label>
+        </div>
+        <button type="submit" class="btn-submit">发布公告</button>
+    </form>
+</div>
+
+<div class="remark-list">
+    <h3 style="padding: 20px 20px 0; margin: 0;">历史公告</h3>
+    {% if remarks %}
+        {% for remark in remarks %}
+            <div class="remark-item">
+                <div class="remark-header">
+                    <div>
+                        <span class="status-badge {{ 'status-active' if remark.is_active else 'status-inactive' }}">
+                            {{ '已启用' if remark.is_active else '已禁用' }}
+                        </span>
+                        <span class="remark-meta" style="margin-left: 10px;">
+                            发布时间：{{ remark.create_time.strftime('%Y-%m-%d %H:%M') }}
+                        </span>
+                    </div>
+                    <div class="remark-actions">
+                        <button class="btn-small btn-edit" data-id="{{ remark.remark_id }}" data-content="{{ remark.remark_content | e }}" data-active="{{ remark.is_active | lower }}" onclick="editRemark(this)">
+                            编辑
+                        </button>
+                        <button class="btn-small btn-delete" onclick="deleteRemark({{ remark.remark_id }})">
+                            删除
+                        </button>
+                    </div>
+                </div>
+                <div class="remark-content">{{ remark.remark_content | safe }}</div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div style="padding: 40px; text-align: center; color: #999;">
+            暂无公告信息
+        </div>
+    {% endif %}
+</div>
+
+<!-- 编辑弹窗 -->
+<div id="editModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; width: 600px; max-width: 90%; border-radius: 8px; overflow: hidden;">
+        <div style="padding: 20px; border-bottom: 1px solid #eee;">
+            <h3 style="margin: 0;">编辑公告</h3>
+        </div>
+        <form id="editForm" method="POST" action="{{ url_for('admin.edit_remark') }}" style="padding: 20px;" onsubmit="beforeEditSubmit()">
+            <input type="hidden" id="edit_remark_id" name="remark_id">
+            <div class="form-group">
+                <label for="edit_remark_content">公告内容</label>
+                <div id="edit_remark_content" style="border: 1px solid #ddd; border-radius: 4px;"></div>
+                <!-- 隐藏input用于提交表单 -->
+                <input type="hidden" id="edit_remark_content_input" name="remark_content" required>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="edit_is_active" name="is_active">
+                    对用户可见
+                </label>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" onclick="closeEditModal()" style="padding: 8px 16px; border: 1px solid #ddd; border-radius: 4px; background: white; cursor: pointer;">取消</button>
+                <button type="submit" class="btn-submit">保存修改</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block js %}
+<!-- 引入WangEditor富文本编辑器 -->
+<script src="https://cdn.jsdelivr.net/npm/@wangeditor/editor@5/dist/index.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/@wangeditor/editor@5/dist/css/style.css" rel="stylesheet">
+
+<script>
+// 全局编辑器实例
+let addEditor, editEditor;
+
+// 初始化新增公告编辑器
+function initAddEditor() {
+    const E = window.wangEditor
+    addEditor = E.createEditor({
+        selector: '#remark_content',
+        config: {
+            placeholder: '请输入公告内容，支持插入图片、文字排版...',
+            MENU_CONF: {
+                uploadImage: {
+                    // 支持插入网络图片和本地上传
+                    fieldName: 'image',
+                    allowedFileTypes: ['image/*'],
+                    maxFileSize: 10 * 1024 * 1024, // 10M
+                    customInsert: (res, insertFn) => {
+                        // 如果需要本地图片上传，后续对接后端接口即可，当前默认支持插入网络图片
+                        insertFn(res.data.url, res.data.alt, res.data.href)
+                    }
+                }
+            }
+        },
+        mode: 'default'
+    })
+}
+
+// 初始化编辑公告编辑器
+function initEditEditor() {
+    const E = window.wangEditor
+    editEditor = E.createEditor({
+        selector: '#edit_remark_content',
+        config: {
+            placeholder: '请输入公告内容...',
+            MENU_CONF: {
+                uploadImage: {
+                    fieldName: 'image',
+                    allowedFileTypes: ['image/*'],
+                    maxFileSize: 10 * 1024 * 1024,
+                }
+            }
+        },
+        mode: 'default'
+    })
+}
+
+// 页面加载完成初始化编辑器
+window.onload = function() {
+    initAddEditor();
+    
+    // 原有点击外部关闭弹窗逻辑
+    const modal = document.getElementById('editModal');
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            closeEditModal();
+        }
+    }
+}
+
+function editRemark(btn) {
+    const id = btn.dataset.id;
+    const content = btn.dataset.content;
+    const isActive = btn.dataset.active === 'true';
+    document.getElementById('edit_remark_id').value = id;
+    document.getElementById('edit_is_active').checked = isActive;
+    document.getElementById('editModal').style.display = 'flex';
+    
+    // 初始化编辑编辑器并设置内容
+    setTimeout(() => {
+        if (!editEditor) {
+            initEditEditor();
+        }
+        editEditor.setHtml(content);
+    }, 100);
+}
+
+function closeEditModal() {
+    document.getElementById('editModal').style.display = 'none';
+    // 销毁编辑编辑器，避免重复初始化
+    if (editEditor) {
+        editEditor.destroy();
+        editEditor = null;
+    }
+}
+
+// 新增公告提交前获取编辑器内容
+function beforeAddSubmit() {
+    document.getElementById('remark_content_input').value = addEditor.getHtml();
+}
+
+// 编辑公告提交前获取编辑器内容
+function beforeEditSubmit() {
+    document.getElementById('edit_remark_content_input').value = editEditor.getHtml();
+}
+
+function deleteRemark(id) {
+    if (confirm('确定要删除这条公告吗？删除后无法恢复。')) {
+        window.location.href = "/admin/remark/delete/" + id;
+    }
+}
+</script>
+{% endblock %}

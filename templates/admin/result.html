@@ -1,0 +1,415 @@
+{% extends "admin/base.html" %}
+
+{% block title %}聚类结果{% endblock %}
+
+{% block content %}
+<!-- 强制内嵌样式，不依赖base.html的块，100%生效 -->
+<style>
+    /* 全局强制图片尺寸约束 */
+    .plot-thumbnail {
+        max-width: 100% !important;
+        width: 100% !important;
+        max-height: 160px !important;
+        height: auto !important;
+        border-radius: 6px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        cursor: zoom-in;
+        transition: transform 0.2s ease;
+        object-fit: contain !important;
+        background: #f8f9fa;
+    }
+    .plot-thumbnail:hover {
+        transform: scale(1.02);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .plot-card {
+        padding: 10px;
+        background: #fff;
+        border-radius: 8px;
+        border: 1px solid #eee;
+        margin-bottom: 10px;
+    }
+    .plot-title {
+        text-align: center;
+        margin: 0 0 10px 0;
+        font-weight: 500;
+        font-size: 13px;
+        color: #2c3e50;
+        line-height: 1.2;
+    }
+    .metrics-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .metrics-table tr {
+        border-bottom: 1px solid #dee2e6;
+    }
+    .metrics-table tr:last-child {
+        border-bottom: none;
+    }
+    .metrics-table td {
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+    .empty-plot {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #999;
+        font-size: 12px;
+        height: 160px;
+        border: 1px dashed #ddd;
+        border-radius: 6px;
+        background: #f8f9fa;
+    }
+    .model-container {
+        margin-bottom: 40px;
+        border: 1px solid #eee;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .model-header {
+        padding: 15px 20px;
+        background: #fff;
+        border-bottom: 1px solid #eee;
+    }
+    .model-visual {
+        padding: 15px 20px;
+        background: #f8f9fa;
+    }
+    .grid-3 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+    .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+    }
+    .btn-sm {
+        padding: 3px 8px;
+        font-size: 12px;
+        margin-right: 5px;
+    }
+</style>
+
+<!-- 引入Lightbox2放大功能 -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.4/css/lightbox.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.4/js/lightbox.min.js"></script>
+<script>
+    lightbox.option({
+        'resizeDuration': 200,
+        'wrapAround': true,
+        'fadeDuration': 200
+    });
+    
+    function toggleModelInfo(modelId) {
+        const infoRow = document.getElementById('model-info-' + modelId);
+        const stdRow = document.getElementById('model-std-' + modelId);
+        const remarkRow = document.getElementById('model-remark-' + modelId);
+        const visualArea = document.getElementById('model-visual-' + modelId);
+        const icon = document.getElementById('toggle-icon-' + modelId);
+        
+        if (infoRow.style.display === 'none') {
+            infoRow.style.display = 'table-row';
+            if (stdRow) stdRow.style.display = 'table-row';
+            remarkRow.style.display = 'table-row';
+            visualArea.style.display = 'block';
+            icon.textContent = '▲';
+        } else {
+            infoRow.style.display = 'none';
+            if (stdRow) stdRow.style.display = 'none';
+            remarkRow.style.display = 'none';
+            visualArea.style.display = 'none';
+            icon.textContent = '▼';
+        }
+    }
+    
+    function toggleDeploy(modelId, isChecked) {
+        const url = '/admin/result/deploy/' + modelId;
+        const label = document.querySelector('label[for="deploy-switch-' + modelId + '"]');
+        const deployBtn = document.querySelector('a[href*="deploy/' + modelId + '"]');
+        
+        // 后端是GET请求，直接跳转即可
+        window.location.href = url;
+    }
+    
+    function editRemark(modelId) {
+        const currentRemark = document.getElementById('remark-' + modelId).textContent;
+        const newRemark = prompt('请输入模型备注：', currentRemark === '暂无备注' ? '' : currentRemark);
+        if (newRemark !== null) {
+            fetch('/admin/result/save-remark/' + modelId, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ remark: newRemark })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('remark-' + modelId).textContent = newRemark || '暂无备注';
+                } else {
+                    alert('备注更新失败：' + data.msg);
+                }
+            })
+            .catch(error => {
+                alert('备注更新失败，请稍后重试');
+            });
+        }
+    }
+</script>
+
+<div class="container">
+    <div class="card">
+        <div class="card-header">
+            <h2>聚类模型结果</h2>
+        </div>
+        <div class="card-body">
+
+            {% for model, metric, dataset in models %}
+            <div class="model-container">
+                <!-- 模型指标：分两行显示 -->
+                <div class="model-header" style="cursor: pointer;" onclick="toggleModelInfo({{ model.model_id }})">
+                    <table class="metrics-table">
+                        <!-- 第一行：核心基础指标 -->
+                        <tr>
+                            <td><strong>模型ID</strong> {{ model.model_id }}</td>
+                            <td><strong>算法名称</strong> {{ model.model_name.upper() }}</td>
+                            <td><strong>所属数据集</strong> {{ dataset.name }}</td>
+                              <td><strong>ARI</strong> {{ "%.2f%%"|format(metric.accuracy * 100) }}</td>
+                            <td><strong>损失值</strong> {{ "%.4f"|format(metric.loss_value) }}</td>
+                            <td style="width: 180px; text-align: right;">
+                                <strong>部署状态</strong> 
+                                <div class="form-check form-switch" style="display: inline-block; margin: 0 10px; vertical-align: middle;">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="deploy-switch-{{ model.model_id }}" 
+                                           {{ 'checked' if model.is_deployed else '' }}
+                                           onchange="toggleDeploy({{ model.model_id }}, this.checked)">
+                                    <label class="form-check-label" for="deploy-switch-{{ model.model_id }}">
+                                        {{ '已部署' if model.is_deployed else '未部署' }}
+                                    </label>
+                                </div>
+                                <span id="toggle-icon-{{ model.model_id }}" style="margin-left: 10px;">▼</span>
+                            </td>
+                        </tr>
+                         <!-- 第二行：无监督评估指标 + 操作 -->
+                         <tr id="model-info-{{ model.model_id }}" style="display: none;">
+                             <td><strong>轮廓系数</strong> {{ metric.silhouette_score|default('N/A') }}</td>
+                             <td><strong>DBI指数</strong> {{ metric.dbi_score|default('N/A') }}</td>
+                             <td><strong>CH指数</strong> {{ metric.ch_score|default('N/A') }}</td>
+                             <td><strong>创建时间</strong> {{ model.create_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                             <td colspan="2">
+                                 <div style="margin-top: 5px;">
+                                     <a href="{{ url_for('admin.deploy_model', model_id=model.model_id) }}" 
+                                        class="btn btn-sm btn-{{ 'warning' if model.is_deployed else 'primary' }}">
+                                         {{ '取消部署' if model.is_deployed else '部署模型' }}
+                                     </a>
+                                     <button type="button" class="btn btn-sm btn-secondary" onclick="editRemark({{ model.model_id }})">
+                                         编辑备注
+                                     </button>
+                                     <a href="{{ url_for('admin.delete_model', model_id=model.model_id) }}" 
+                                        class="btn btn-sm btn-danger" 
+                                        onclick="return confirm('确定删除该模型吗？')">
+                                         删除模型
+                                     </a>
+                                 </div>
+                             </td>
+                         </tr>
+    
+                           {% if metric.accuracy_std > 0 %}
+                          <tr id="model-std-{{ model.model_id }}" style="display: none; background: #e3f2fd;">
+                               <td><strong>ARI标准差</strong> {{ "%.4f"|format(metric.accuracy_std) }}</td>
+                             <td><strong>轮廓系数标准差</strong> {{ "%.4f"|format(metric.silhouette_std) }}</td>
+                             <td><strong>DBI标准差</strong> {{ "%.4f"|format(metric.dbi_std) }}</td>
+                             <td><strong>CH标准差</strong> {{ "%.4f"|format(metric.ch_std) }}</td>
+                             <td colspan="2" style="color: #1976d2; font-size: 13px;">
+                                 <i class="fa fa-info-circle"></i> 基于5个增广数据集评估得到，数值越小表示模型稳定性越好
+                             </td>
+                         </tr>
+                         {% endif %}
+                         <!-- 备注行 -->
+                         <tr id="model-remark-{{ model.model_id }}" style="display: none;">
+                            <td colspan="6">
+                                <strong>模型备注：</strong>
+                                <span id="remark-{{ model.model_id }}">{{ model.remark if model.remark else '暂无备注' }}</span>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- 可视化结果区域 -->
+                <div id="model-visual-{{ model.model_id }}" class="model-visual" style="display: none;">
+                    <h4 style="margin-bottom: 15px; font-size: 15px;">
+                        模型ID {{ model.model_id }} 可视化结果 
+                        <small style="font-size: 12px; color: #666;">（点击图片可放大查看）</small>
+                    </h4>
+                    
+                    <!-- 第一排：通用核心图 -->
+                    <div class="grid-3">
+                        <!-- 1. 聚类结果散点图 -->
+                        <div class="plot-card">
+                            <p class="plot-title">聚类结果散点图（PCA降维）</p>
+                            <a href="{{ url_for('static', filename='model_plots/model_{}_scatter.png'.format(model.model_id)) }}" 
+                               data-lightbox="model-{{ model.model_id }}" 
+                               data-title="模型ID {{ model.model_id }} - 聚类结果散点图">
+                                <img 
+                                    src="{{ url_for('static', filename='model_plots/model_{}_scatter.png'.format(model.model_id)) }}" 
+                                    class="plot-thumbnail"
+                                    alt="聚类结果散点图"
+                                    onerror="this.parentElement.style.display='none'; this.parentElement.nextElementSibling.style.display='block';"
+                                >
+                            </a>
+                            <div class="empty-plot" style="display: none;">图片加载失败</div>
+                        </div>
+                        <!-- 2. 准确率对比图 -->
+                         <div class="plot-card">
+                             <p class="plot-title">ARI对比</p>
+                            <a href="{{ url_for('static', filename='model_plots/model_{}_accuracy.png'.format(model.model_id)) }}" 
+                               data-lightbox="model-{{ model.model_id }}" 
+                               data-title="模型ID {{ model.model_id }} - 准确率对比">
+                                <img 
+                                    src="{{ url_for('static', filename='model_plots/model_{}_accuracy.png'.format(model.model_id)) }}" 
+                                    class="plot-thumbnail"
+                                    alt="准确率对比"
+                                    onerror="this.parentElement.style.display='none'; this.parentElement.nextElementSibling.style.display='block';"
+                                >
+                            </a>
+                            <div class="empty-plot" style="display: none;">图片加载失败</div>
+                        </div>
+                        <!-- 3. 无监督指标雷达图 -->
+                        <div class="plot-card">
+                            <p class="plot-title">无监督评估指标雷达图</p>
+                            <a href="{{ url_for('static', filename='model_plots/model_{}_radar.png'.format(model.model_id)) }}" 
+                               data-lightbox="model-{{ model.model_id }}" 
+                               data-title="模型ID {{ model.model_id }} - 无监督指标雷达图">
+                                <img 
+                                    src="{{ url_for('static', filename='model_plots/model_{}_radar.png'.format(model.model_id)) }}" 
+                                    class="plot-thumbnail"
+                                    alt="无监督指标雷达图"
+                                    onerror="this.parentElement.style.display='none'; this.parentElement.nextElementSibling.style.display='block';"
+                                >
+                            </a>
+                            <div class="empty-plot" style="display: none;">图片加载失败</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 第二排：算法专属特色图 -->
+                    <div class="grid-2">
+                        <!-- K-Means++ 专属 -->
+                        {% if model.model_name == 'kmeans' %}
+                        <div class="plot-card">
+                            <p class="plot-title">K-Means++ 损失函数迭代曲线</p>
+                            <a href="{{ url_for('static', filename='model_plots/model_{}_loss_curve.png'.format(model.model_id)) }}" 
+                               data-lightbox="model-{{ model.model_id }}" 
+                               data-title="模型ID {{ model.model_id }} - 损失迭代曲线">
+                                <img 
+                                    src="{{ url_for('static', filename='model_plots/model_{}_loss_curve.png'.format(model.model_id)) }}" 
+                                    class="plot-thumbnail"
+                                    alt="损失迭代曲线"
+                                    onerror="this.parentElement.style.display='none'; this.parentElement.nextElementSibling.style.display='block';"
+                                >
+                            </a>
+                            <div class="empty-plot" style="display: none;">图片加载失败</div>
+                        </div>
+                        <div class="empty-plot">K-Means++ 仅生成损失迭代曲线</div>
+                        
+                        <!-- BGMM 专属 -->
+                        {% elif model.model_name == 'bgmm' %}
+                        <div class="plot-card">
+                            <p class="plot-title">BGMM 高斯分量权重分布</p>
+                            <a href="{{ url_for('static', filename='model_plots/model_{}_weights.png'.format(model.model_id)) }}" 
+                               data-lightbox="model-{{ model.model_id }}" 
+                               data-title="模型ID {{ model.model_id }} - 高斯分量权重分布">
+                                <img 
+                                    src="{{ url_for('static', filename='model_plots/model_{}_weights.png'.format(model.model_id)) }}" 
+                                    class="plot-thumbnail"
+                                    alt="高斯分量权重分布"
+                                    onerror="this.parentElement.style.display='none'; this.parentElement.nextElementSibling.style.display='block';"
+                                >
+                            </a>
+                            <div class="empty-plot" style="display: none;">图片加载失败</div>
+                        </div>
+                        <div class="plot-card">
+                            <p class="plot-title">BGMM 损失函数迭代曲线</p>
+                            <a href="{{ url_for('static', filename='model_plots/model_{}_loss_curve.png'.format(model.model_id)) }}" 
+                               data-lightbox="model-{{ model.model_id }}" 
+                               data-title="模型ID {{ model.model_id }} - 损失迭代曲线">
+                                <img 
+                                    src="{{ url_for('static', filename='model_plots/model_{}_loss_curve.png'.format(model.model_id)) }}" 
+                                    class="plot-thumbnail"
+                                    alt="损失迭代曲线"
+                                    onerror="this.parentElement.style.display='none'; this.parentElement.nextElementSibling.style.display='block';"
+                                >
+                            </a>
+                            <div class="empty-plot" style="display: none;">图片加载失败</div>
+                        </div>
+                        
+                        <!-- FCM 专属（热力图修复） -->
+                        {% elif model.model_name == 'fcm' %}
+                        <div class="plot-card">
+                            <p class="plot-title">FCM 隶属度矩阵热力图</p>
+                            <a href="{{ url_for('static', filename='model_plots/model_{}_membership.png'.format(model.model_id)) }}" 
+                               data-lightbox="model-{{ model.model_id }}" 
+                               data-title="模型ID {{ model.model_id }} - 隶属度矩阵热力图">
+                                <img 
+                                    src="{{ url_for('static', filename='model_plots/model_{}_membership.png'.format(model.model_id)) }}" 
+                                    class="plot-thumbnail"
+                                    alt="隶属度矩阵热力图"
+                                    onerror="this.parentElement.style.display='none'; this.parentElement.nextElementSibling.style.display='block';"
+                                >
+                            </a>
+                            <div class="empty-plot" style="display: none;">热力图生成失败</div>
+                        </div>
+                        <div class="plot-card">
+                            <p class="plot-title">FCM 目标函数迭代曲线</p>
+                            <a href="{{ url_for('static', filename='model_plots/model_{}_loss_curve.png'.format(model.model_id)) }}" 
+                               data-lightbox="model-{{ model.model_id }}" 
+                               data-title="模型ID {{ model.model_id }} - 目标函数迭代曲线">
+                                <img 
+                                    src="{{ url_for('static', filename='model_plots/model_{}_loss_curve.png'.format(model.model_id)) }}" 
+                                    class="plot-thumbnail"
+                                    alt="损失迭代曲线"
+                                    onerror="this.parentElement.style.display='none'; this.parentElement.nextElementSibling.style.display='block';"
+                                >
+                            </a>
+                            <div class="empty-plot" style="display: none;">图片加载失败</div>
+                        </div>
+                        
+                        <!-- MeanShift 专属 -->
+                        {% elif model.model_name == 'meanshift' %}
+                        <div class="plot-card">
+                            <p class="plot-title">MeanShift 核密度估计分布图</p>
+                            <a href="{{ url_for('static', filename='model_plots/model_{}_kde.png'.format(model.model_id)) }}" 
+                               data-lightbox="model-{{ model.model_id }}" 
+                               data-title="模型ID {{ model.model_id }} - 核密度估计分布图">
+                                <img 
+                                    src="{{ url_for('static', filename='model_plots/model_{}_kde.png'.format(model.model_id)) }}" 
+                                    class="plot-thumbnail"
+                                    alt="核密度估计分布图"
+                                    onerror="this.parentElement.style.display='none'; this.parentElement.nextElementSibling.style.display='block';"
+                                >
+                            </a>
+                            <div class="empty-plot" style="display: none;">图片加载失败</div>
+                        </div>
+                        <div class="empty-plot">MeanShift 无迭代损失曲线</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div style="padding: 40px; text-align: center; color: #6c757d; border: 1px dashed #ddd; border-radius: 8px;">
+                暂无训练结果，请先前往「模型训练」页面训练模型
+            </div>
+            {% endfor %}
+
+        </div>
+    </div>
+</div>
+{% endblock %}

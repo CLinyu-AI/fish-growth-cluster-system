@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}用户面板{% endblock %} - 鱼类生长特征分析系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            display: flex;
+            min-height: 100vh;
+            background-color: #f5f7fa;
+        }
+        /* 左侧固定侧边栏 */
+        .sidebar {
+            width: 240px;
+            background-color: #2c3e50;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            left: 0;
+            top: 0;
+            z-index: 100;
+        }
+        /* 侧边栏顶部：系统名称 */
+        .sidebar-header {
+            padding: 25px 20px;
+            border-bottom: 1px solid #34495e;
+        }
+        .sidebar-header h1 {
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            line-height: 1.4;
+        }
+        /* 侧边栏中间：功能导航 */
+        .sidebar-menu {
+            flex: 1;
+            padding: 20px 0;
+            overflow-y: auto;
+        }
+        .sidebar-menu a {
+            display: block;
+            color: #bdc3c7;
+            text-decoration: none;
+            padding: 12px 20px;
+            font-size: 15px;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+        }
+        .sidebar-menu a:hover, .sidebar-menu a.active {
+            background-color: #34495e;
+            color: white;
+            border-left-color: #3498db;
+        }
+        /* 侧边栏底部：用户信息+退出登录 */
+        .sidebar-footer {
+            padding: 20px;
+            border-top: 1px solid #34495e;
+        }
+        .user-info {
+            color: white;
+            margin-bottom: 10px;
+        }
+        .user-info .username {
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .logout-btn {
+            display: block;
+            width: 100%;
+            padding: 8px 0;
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        .logout-btn:hover {
+            background-color: #c0392b;
+        }
+        /* 右侧主内容区 */
+        .main-content {
+            margin-left: 240px;
+            flex: 1;
+            padding: 30px;
+            width: calc(100% - 240px);
+        }
+    </style>
+</head>
+<body>
+    <!-- 左侧侧边栏 -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h1>鱼类生长特征<br>聚类分析系统</h1>
+        </div>
+
+        <div class="sidebar-menu">
+            <a href="{{ url_for('user.dashboard') }}" class="{% if active_page == 'dashboard' %}active{% endif %}">首页</a>
+            <a href="{{ url_for('user.predict') }}" class="{% if active_page == 'predict' %}active{% endif %}">聚类预测</a>
+            <a href="{{ url_for('user.batch_predict') }}" class="{% if active_page == 'batch_predict' %}active{% endif %}">批量预测</a>
+            <a href="{{ url_for('user.predict_records') }}" class="{% if active_page == 'records' %}active{% endif %}">预测记录</a>
+        </div>
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <span class="username">用户：{{ session.username }}</span>
+            </div>
+            <a href="{{ url_for('auth.logout') }}" class="logout-btn">退出登录</a>
+        </div>
+    </div>
+
+    <!-- 右侧主内容区 -->
+    <div class="main-content">
+        {% block content %}{% endblock %}
+    </div>
+
+    <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+    {% block js %}{% endblock %}
+</body>
+</html>

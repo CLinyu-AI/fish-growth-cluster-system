@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>鱼类生长特征分析系统 - 登录</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family: "Segoe UI",sans-serif;
+}
+
+body{
+height:100vh;
+display:flex;
+justify-content:center;
+align-items:center;
+background: linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+overflow:hidden;
+}
+
+/* 动态背景气泡 */
+
+body::before{
+content:"";
+position:absolute;
+width:600px;
+height:600px;
+background:rgba(255,255,255,0.08);
+border-radius:50%;
+top:-200px;
+left:-200px;
+}
+
+body::after{
+content:"";
+position:absolute;
+width:500px;
+height:500px;
+background:rgba(255,255,255,0.05);
+border-radius:50%;
+bottom:-200px;
+right:-150px;
+}
+
+/* 卡片 */
+
+.login-card{
+width:420px;
+padding:40px;
+border-radius:20px;
+background:rgba(255,255,255,0.1);
+backdrop-filter: blur(20px);
+box-shadow:0 10px 40px rgba(0,0,0,0.3);
+color:#fff;
+animation:fade 0.8s ease;
+}
+
+@keyframes fade{
+from{
+opacity:0;
+transform:translateY(30px);
+}
+to{
+opacity:1;
+transform:translateY(0);
+}
+}
+
+.logo{
+text-align:center;
+font-size:40px;
+margin-bottom:10px;
+}
+
+.title{
+text-align:center;
+font-size:24px;
+font-weight:600;
+margin-bottom:30px;
+}
+
+.form-group{
+margin-bottom:18px;
+}
+
+.form-group label{
+font-size:14px;
+margin-bottom:6px;
+display:block;
+}
+
+.input-box{
+display:flex;
+align-items:center;
+background:rgba(255,255,255,0.15);
+border-radius:10px;
+padding:10px;
+}
+
+.input-box i{
+margin-right:10px;
+}
+
+.input-box input{
+background:none;
+border:none;
+outline:none;
+color:#fff;
+width:100%;
+font-size:14px;
+}
+
+input::placeholder{
+color:#ddd;
+}
+
+.captcha-box{
+display:flex;
+gap:10px;
+}
+
+.captcha-box img{
+width:100px;
+height:40px;
+cursor:pointer;
+border-radius:6px;
+}
+
+button{
+width:100%;
+padding:12px;
+border:none;
+border-radius:10px;
+background:linear-gradient(45deg,#00c6ff,#0072ff);
+color:#fff;
+font-size:16px;
+cursor:pointer;
+margin-top:10px;
+transition:0.3s;
+}
+
+button:hover{
+transform:translateY(-2px);
+box-shadow:0 5px 15px rgba(0,0,0,0.3);
+}
+
+.link{
+text-align:center;
+margin-top:15px;
+font-size:14px;
+}
+
+.link a{
+color:#fff;
+text-decoration:underline;
+}
+
+.error{
+background:#ff4d4f;
+padding:10px;
+border-radius:6px;
+margin-bottom:15px;
+font-size:14px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="login-card">
+
+<div class="logo">🐟</div>
+<div class="title">鱼类生长特征分析系统</div>
+
+{% if error %}
+<div class="error">
+<i class="fa fa-warning"></i>
+{{ error }}
+</div>
+{% endif %}
+
+<form id="loginForm" method="post">
+
+<div class="form-group">
+<label>账号</label>
+<div class="input-box">
+<i class="fa fa-user"></i>
+<input type="text" name="username" id="username" placeholder="请输入账号" required>
+</div>
+</div>
+
+<div class="form-group">
+<label>密码</label>
+<div class="input-box">
+<i class="fa fa-lock"></i>
+<input type="password" name="password" placeholder="请输入密码" required>
+</div>
+</div>
+
+<div class="form-group">
+<label>验证码</label>
+
+<div class="captcha-box">
+
+<div class="input-box" style="flex:1">
+<input type="text" name="captcha" id="captcha" maxlength="4" placeholder="4位验证码" required>
+</div>
+
+<img
+id="captcha-img"
+src="{{ url_for('auth.captcha') }}"
+data-url="{{ url_for('auth.captcha') }}"
+title="点击刷新验证码">
+
+</div>
+
+</div>
+
+<button id="loginBtn">登录</button>
+
+</form>
+
+<div class="link">
+没有账号？<a href="{{ url_for('auth.register') }}">立即注册</a>
+</div>
+
+</div>
+
+<script>
+
+// 验证码刷新
+const captcha = document.getElementById("captcha-img")
+const url = captcha.getAttribute("data-url")
+
+captcha.onclick=function(){
+this.src=url+"?t="+Math.random()
+}
+
+// 验证码格式
+document.getElementById("loginForm").addEventListener("submit",function(e){
+
+const code=document.getElementById("captcha").value
+
+if(!/^\d{4}$/.test(code)){
+alert("请输入4位数字验证码")
+e.preventDefault()
+return
+}
+
+document.getElementById("loginBtn").innerText="登录中..."
+})
+
+</script>
+
+</body>
+</html>
